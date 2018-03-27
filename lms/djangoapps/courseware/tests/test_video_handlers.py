@@ -9,6 +9,7 @@ from datetime import timedelta
 
 import ddt
 import freezegun
+from django.core.files.base import ContentFile
 from django.utils.timezone import now
 from mock import MagicMock, Mock, patch
 from nose.plugins.attrib import attr
@@ -28,6 +29,8 @@ from xmodule.video_module.transcripts_utils import (
     edxval_api
 )
 from xmodule.x_module import STUDENT_VIEW
+
+from edxval import api
 
 from .helpers import BaseTestXmodule
 from .test_video_xml import SOURCE_XML
@@ -1009,6 +1012,59 @@ class TestStudioTranscriptTranslationPostDispatch(TestVideo):
             response.json["error"],
             "There is a problem with this transcript file. Try to upload a different file."
         )
+
+
+@attr(shard=1)
+class TestStudioTranscriptTranslationDeleteDispatch(TestVideo):
+    """
+    Test Studio video handler that provide translation transcripts.
+
+    Tests for `translation` dispatch DELETE HTTP method.
+    """
+    REQUEST_META = {'wsgi.url_scheme': 'http', 'REQUEST_METHOD': 'DELETE'}
+
+    def test_translation_delete_w_edx_video_id(self):
+        """
+        Verify that DELETE dispatch works as expected when video has edx_video_id
+        """
+        video_id, language_code = u'an_edx_video_id', u'uk'
+        api.create_video({
+            'edx_video_id': video_id,
+            'status': 'upload',
+            'client_video_id': 'awesome.mp4',
+            'duration': 0,
+            'encoded_videos': [],
+            'courses': [unicode(self.course.id)]
+        })
+        api.create_video_transcript(
+            video_id=video_id,
+            language_code=language_code,
+            file_format='srt',
+            content=ContentFile(SRT_content)
+        )
+
+        # verify that a video transcript exists for expected data
+        self.assertTrue(api.get_video_transcript_data(video_id=video_id, language_code=language_code))
+
+        request = Request(self.REQUEST_META)
+        self.item_descriptor.edx_video_id = video_id
+        response = self.item_descriptor.studio_transcript(request=request, dispatch='translation/uk')
+        self.assertEqual(response.status_code, 200)
+
+        # verify that a video transcript dose not exist for expected data
+        self.assertFalse(api.get_video_transcript_data(video_id=video_id, language_code=language_code))
+
+    def test_translation_delete_wo_edx_video_id(self):
+        """
+        Verify that DELETE dispatch works as expected when video has no edx_video_id
+        """
+        request = Request(self.REQUEST_META)
+        # make sure there is no `edx_video_id`
+        self.item_descriptor.edx_video_id = ''
+        self.assertEqual(self.item_descriptor.transcripts, {u'uk': u'ukrainian_translation.srt'})
+        response = self.item_descriptor.studio_transcript(request=request, dispatch='translation/uk')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.item_descriptor.transcripts, {})
 
 
 @attr(shard=1)
