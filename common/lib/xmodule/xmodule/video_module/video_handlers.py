@@ -20,7 +20,7 @@ from xmodule.exceptions import NotFoundError
 from xmodule.fields import RelativeTime
 from opaque_keys.edx.locator import CourseLocator
 
-from edxval.api import create_or_update_video_transcript, create_external_video
+from edxval.api import create_or_update_video_transcript, create_external_video, delete_video_transcript
 from .transcripts_utils import (
     clean_video_id,
     get_or_create_sjson,
@@ -488,6 +488,16 @@ class VideoStudioViewHandlers(object):
                             },
                             status=400
                         )
+            elif request.method == 'DELETE':
+                response = Response(status=200)
+
+                edx_video_id = clean_video_id(self.edx_video_id)
+                if edx_video_id:
+                    edxval_api.delete_video_transcript(video_id=edx_video_id, language_code=language)
+                else:
+                    self.transcripts.pop(language, None)
+
+                return response
 
             elif request.method == 'GET':
                 language = request.GET.get('language_code')
