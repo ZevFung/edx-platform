@@ -611,8 +611,16 @@ class VideoDescriptor(VideoFields, VideoTranscriptsMixin, VideoStudioViewHandler
 
         languages = [{'label': label, 'code': lang} for lang, label in settings.ALL_LANGUAGES]
         languages.sort(key=lambda l: l['label'])
+        editable_fields['transcripts']['custom'] = True
         editable_fields['transcripts']['languages'] = languages
         editable_fields['transcripts']['type'] = 'VideoTranslations'
+
+        # merge `sub` into `transcripts`
+        transcripts_info = self.get_transcripts_info()
+        if transcripts_info['sub']:
+            transcripts_info['transcripts'] = dict(transcripts_info, en=transcripts_info['sub'])
+
+        editable_fields['transcripts']['value'] = transcripts_info['transcripts']
         editable_fields['transcripts']['urlRoot'] = self.runtime.handler_url(
             self,
             'studio_transcript',
