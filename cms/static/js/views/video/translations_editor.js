@@ -1,10 +1,11 @@
 define(
     [
-        'jquery', 'underscore',
-        'js/views/abstract_editor', 'js/models/uploads', 'js/views/uploads'
+        'jquery', 'underscore', 'edx-ui-toolkit/js/utils/html-utils', 'js/views/video/transcripts/utils',
+        'js/views/abstract_editor', 'js/models/uploads', 'js/views/uploads',
+        'text!templates/video-transcript-upload-status.underscore'
 
     ],
-function($, _, AbstractEditor, FileUpload, UploadDialog) {
+function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDialog, VideoTranscriptUploadStatusTemplate) {
     'use strict';
 
     var VideoUploadDialog = UploadDialog.extend({
@@ -39,6 +40,13 @@ function($, _, AbstractEditor, FileUpload, UploadDialog) {
 
             this.templateItem = _.template(tpl);
             AbstractEditor.prototype.initialize.apply(this, arguments);
+
+
+            var languageMap = {};
+            _.each(this.model.getDisplayValue(), function(value, lang) {
+                languageMap[lang] = lang;
+            });
+            TranscriptUtils.Storage.set('languageMap', languageMap);
         },
 
         getDropdown: (function() {
@@ -111,14 +119,16 @@ function($, _, AbstractEditor, FileUpload, UploadDialog) {
         setValueInEditor: function(values) {
             var self = this,
                 frag = document.createDocumentFragment(),
-                dropdown = self.getDropdown(values);
+                dropdown = self.getDropdown(values),
+                languageMap = TranscriptUtils.Storage.get('languageMap');
 
-            _.each(values, function(value, key) {
+            _.each(values, function(value, newLang) {
                 var html = $(self.templateItem({
-                    lang: key,
+                    newLang: newLang,
+                    originalLang: _.findKey(languageMap, function(lang){ return lang === newLang}) || '',
                     value: value,
-                    url: self.model.get('urlRoot') + '/' + key
-                })).prepend(dropdown.clone().val(key))[0];
+                    url: self.model.get('urlRoot') + '/' + newLang
+                })).prepend(dropdown.clone().val(newLang))[0];
 
                 frag.appendChild(html);
             });
@@ -130,16 +140,15 @@ function($, _, AbstractEditor, FileUpload, UploadDialog) {
             event.preventDefault();
             // We don't call updateModel here since it's bound to the
             // change event
-            var dict = $.extend(true, {}, this.model.get('value'));
-            dict[''] = '';
-            this.setValueInEditor(dict);
+            this.setValueInEditor(this.getAllLanguageDropdownElementsData(true));
             this.$el.find('.create-setting').addClass('is-disabled').attr('aria-disabled', true);
         },
 
         removeEntry: function(event) {
             event.preventDefault();
 
-            var entry = $(event.currentTarget).data('lang');
+            //s('li.list-settings-item')
+            var entry = $(event.currentTarget).parent.data('lang');
             this.setValueInEditor(_.omit(this.model.get('value'), entry));
             this.updateModel();
             this.$el.find('.create-setting').removeClass('is-disabled').attr('aria-disabled', false);
@@ -150,26 +159,77 @@ function($, _, AbstractEditor, FileUpload, UploadDialog) {
 
             var self = this,
                 $target = $(event.currentTarget),
-                lang = $target.data('lang'),
-                model = new FileUpload({
-                    title: gettext('Upload translation'),
-                    fileFormats: ['srt']
-                }),
-                view = new VideoUploadDialog({
-                    model: model,
-                    url: self.model.get('urlRoot') + '/' + lang,
-                    parentElement: $target.closest('.xblock-editor'),
-                    onSuccess: function(response) {
-                        if (!response.filename) { return; }
+                $languageDropdownEl = $target.closest('select'),
+                newLanguage = $languageDropdownEl.val(),
+                uploadURL = this.model.get('urlRoot'),
+                originalLanguage = $target.parents('li.list-settings-item').data('original-lang'),
+                edxVideoIdField = TranscriptUtils.getField(self.model.collection, 'edx_video_id').,
+                fileUploadModel,
+                uploadData,
+                videoUploadDialog;
 
-                        var dict = $.extend(true, {}, self.model.get('value'));
+            // That's the case where user is
+            // uploading a new transcript.
+            if (!originalLanguage) {
+                originalLanguage = newLanguage
+            }
 
-                        dict[lang] = response.filename;
-                        self.model.setValue(dict);
-                    }
-                });
+            // Transcript data payload
+            uploadData = {
+                edx_video_id: edxVideoIdField.getValue(),
+                language_code: originalLanguage,
+                new_language_code: newLanguage
+            };
 
-            view.show();
+            fileUploadModel = new FileUpload({
+                title: gettext('Upload translation'),
+                fileFormats: ['srt']
+            });
+
+            videoUploadDialog = new VideoUploadDialog({
+                model: fileUploadModel,
+                url: uploadURL,
+                parentElement: $target.closest('.xblock-editor'),
+                uploadData: uploadData,
+                onSuccess: function(response) {
+                    if (!response.filename) { return; }
+
+                    var dict = $.extend(true, {}, self.model.get('value'));
+
+                    dict[lang] = response.filename;
+                    self.model.setValue(dict);
+                }
+            });
+
+            videoUploadDialog.show()
+
+        //     // this.$el.find('.metadata-video-translations .upload-transcript-input').click()
+        //     // this.renderMessage($target.closest('li'), 'uploading', '')
+        //
+        //     var $dropdown = $target.closest('select'),
+        //         newLanguage = $dropdown.val();
+        //
+        //     if (!lang) {
+        //         lang = newLanguage
+        //     }
+        //
+        //     $transcriptUploadEl.fileupload({
+        //         url: self.model.get('urlRoot'),
+        //         add: this.transcriptSelected,
+        //         done: this.transcriptUploadSucceeded,
+        //         fail: this.transcriptUploadFailed,
+        //         formData: {
+        //             edx_video_id: edxVideoIdField.getValue(),
+        //             language_code: lang,
+        //             new_language_code: newLanguage
+        //         }
+        //     });
+        //
+        //
+        //     debugger;
+        //
+        //
+        //     this.clearMessage()
         },
 
         enableAdd: function() {
@@ -184,10 +244,39 @@ function($, _, AbstractEditor, FileUpload, UploadDialog) {
         },
 
         onChangeHandler: function(event) {
+            var $target = $(event.currentTarget),
+                originalLang = $target.parents('li.list-settings-item').data('original-lang'),
+                newLang = $target.closest('select').val(),
+                languageMap = TranscriptUtils.Storage.get('languageMap');
+
+            // To protect against any new/unsaved language code in the map.
+            if (originalLang in languageMap) {
+                languageMap[originalLang] = newLang;
+                TranscriptUtils.Storage.set('languageMap', languageMap);
+            }
+
             this.showClearButton();
             this.enableAdd();
-            this.updateModel();
+            this.setValueInEditor(this.getAllLanguageDropdownElementsData());
+        },
+
+        getAllLanguageDropdownElementsData: function(isNew) {
+            var self = this,
+                data = {},
+                languageDropdownElements = this.$el.find('select');
+
+            _.each(languageDropdownElements, function(languageDropdown, index){
+                var language = $(languageDropdown).val(),
+                    transcripts = self.model.getDisplayValue();
+                data[language] = transcripts[language] || "";
+            });
+
+            if (isNew) {
+                data[""] = "";
+            }
+            return data;
         }
+
     });
 
     return Translations;
