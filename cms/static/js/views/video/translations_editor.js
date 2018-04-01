@@ -1,11 +1,9 @@
 define(
     [
         'jquery', 'underscore', 'edx-ui-toolkit/js/utils/html-utils', 'js/views/video/transcripts/utils',
-        'js/views/abstract_editor', 'js/models/uploads', 'js/views/uploads',
-        'text!templates/video-transcript-upload-status.underscore'
-
+        'js/views/abstract_editor', 'js/models/uploads', 'js/views/uploads'
     ],
-function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDialog, VideoTranscriptUploadStatusTemplate) {
+function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDialog) {
     'use strict';
 
     var VideoUploadDialog = UploadDialog.extend({
@@ -146,11 +144,22 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
 
         removeEntry: function(event) {
             event.preventDefault();
-
-            //s('li.list-settings-item')
-            var entry = $(event.currentTarget).parent.data('lang');
-            this.setValueInEditor(_.omit(this.model.get('value'), entry));
-            this.updateModel();
+            var $currentListItemEl = $(event.currentTarget).parent(),
+                originalLang = $currentListItemEl.data('original-lang'),
+                selectedLang = $currentListItemEl.find('select option:selected').val(),
+                languageMap = TranscriptUtils.Storage.get('languageMap');
+            /*
+            There is a scenario when a user adds an empty video translation item and
+            removes it. In such cases, omitting will have no harm on the model
+            values or languages map.
+            */
+            if (originalLang) {
+                this.model.set('value', _.omit(this.model.get('value'), originalLang));
+                TranscriptUtils.Storage.set('languageMap', _.omit(languageMap, originalLang));
+                this.setValueInEditor(this.getAllLanguageDropdownElementsData(false, originalLang));
+            } else {
+                this.setValueInEditor(this.getAllLanguageDropdownElementsData(false, selectedLang));
+            }
             this.$el.find('.create-setting').removeClass('is-disabled').attr('aria-disabled', false);
         },
 
@@ -159,26 +168,26 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
 
             var self = this,
                 $target = $(event.currentTarget),
-                $languageDropdownEl = $target.closest('select'),
-                newLanguage = $languageDropdownEl.val(),
+                $listItem = $target.parents('li.list-settings-item'),
+                originalLang = $listItem.data('original-lang'),
+                newLang = $listItem.find(':selected').val(),
                 uploadURL = this.model.get('urlRoot'),
-                originalLanguage = $target.parents('li.list-settings-item').data('original-lang'),
-                edxVideoIdField = TranscriptUtils.getField(self.model.collection, 'edx_video_id').,
+                edxVideoIdField = TranscriptUtils.getField(self.model.collection, 'edx_video_id'),
                 fileUploadModel,
                 uploadData,
                 videoUploadDialog;
 
-            // That's the case where user is
+            // That's the case when an author is
             // uploading a new transcript.
-            if (!originalLanguage) {
-                originalLanguage = newLanguage
+            if (!originalLang) {
+                originalLang = newLang
             }
 
             // Transcript data payload
             uploadData = {
                 edx_video_id: edxVideoIdField.getValue(),
-                language_code: originalLanguage,
-                new_language_code: newLanguage
+                language_code: originalLang,
+                new_language_code: newLang
             };
 
             fileUploadModel = new FileUpload({
@@ -200,36 +209,7 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
                     self.model.setValue(dict);
                 }
             });
-
-            videoUploadDialog.show()
-
-        //     // this.$el.find('.metadata-video-translations .upload-transcript-input').click()
-        //     // this.renderMessage($target.closest('li'), 'uploading', '')
-        //
-        //     var $dropdown = $target.closest('select'),
-        //         newLanguage = $dropdown.val();
-        //
-        //     if (!lang) {
-        //         lang = newLanguage
-        //     }
-        //
-        //     $transcriptUploadEl.fileupload({
-        //         url: self.model.get('urlRoot'),
-        //         add: this.transcriptSelected,
-        //         done: this.transcriptUploadSucceeded,
-        //         fail: this.transcriptUploadFailed,
-        //         formData: {
-        //             edx_video_id: edxVideoIdField.getValue(),
-        //             language_code: lang,
-        //             new_language_code: newLanguage
-        //         }
-        //     });
-        //
-        //
-        //     debugger;
-        //
-        //
-        //     this.clearMessage()
+            videoUploadDialog.show();
         },
 
         enableAdd: function() {
@@ -245,8 +225,9 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
 
         onChangeHandler: function(event) {
             var $target = $(event.currentTarget),
-                originalLang = $target.parents('li.list-settings-item').data('original-lang'),
-                newLang = $target.closest('select').val(),
+                $listItem = $target.parents('li.list-settings-item'),
+                originalLang = $listItem.data('original-lang'),
+                newLang = $listItem.find('select option:selected').val(),
                 languageMap = TranscriptUtils.Storage.get('languageMap');
 
             // To protect against any new/unsaved language code in the map.
@@ -260,20 +241,29 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
             this.setValueInEditor(this.getAllLanguageDropdownElementsData());
         },
 
-        getAllLanguageDropdownElementsData: function(isNew) {
+        getAllLanguageDropdownElementsData: function(isNew, omittedLanguage) {
             var self = this,
                 data = {},
                 languageDropdownElements = this.$el.find('select');
 
             _.each(languageDropdownElements, function(languageDropdown, index){
-                var language = $(languageDropdown).val(),
+                var language = $(languageDropdown).find(':selected').val(),
                     transcripts = self.model.getDisplayValue();
                 data[language] = transcripts[language] || "";
             });
 
+            // This is needed to render an empty item that
+            // will be further used to upload a transcript.
             if (isNew) {
                 data[""] = "";
             }
+
+            // This Omits a language from the dropdown's data. It is
+            // needed when an item is going to be removed.
+            if (typeof(omittedLanguage) !== 'undefined') {
+                data = _.omit(data, omittedLanguage)
+            }
+
             return data;
         }
 
