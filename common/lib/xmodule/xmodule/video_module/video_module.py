@@ -49,6 +49,7 @@ from .transcripts_utils import (
     VideoTranscriptsMixin,
     clean_video_id,
     subs_filename,
+    get_transcript_for_video
 )
 from .transcripts_model_utils import (
     is_val_transcript_feature_enabled_for_course
@@ -615,10 +616,21 @@ class VideoDescriptor(VideoFields, VideoTranscriptsMixin, VideoStudioViewHandler
         editable_fields['transcripts']['languages'] = languages
         editable_fields['transcripts']['type'] = 'VideoTranslations'
 
-        # merge `sub` into `transcripts`
+        # construct transcripts info and also find if `en` subs exist
         transcripts_info = self.get_transcripts_info()
-        if transcripts_info['sub']:
-            transcripts_info['transcripts'] = dict(transcripts_info, en=transcripts_info['sub'])
+        possible_sub_ids = [self.sub, self.youtube_id_1_0] + get_html5_ids(self.html5_sources)
+        for sub_id in possible_sub_ids:
+            try:
+                get_transcript_for_video(
+                    self.location,
+                    subs_id=sub_id,
+                    file_name=sub_id,
+                    language=u'en'
+                )
+                transcripts_info['transcripts'] = dict(transcripts_info['transcripts'], en=sub_id)
+                break
+            except NotFoundError:
+                continue
 
         editable_fields['transcripts']['value'] = transcripts_info['transcripts']
         editable_fields['transcripts']['urlRoot'] = self.runtime.handler_url(
