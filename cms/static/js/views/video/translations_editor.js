@@ -1,7 +1,7 @@
 define(
     [
         'jquery', 'underscore', 'edx-ui-toolkit/js/utils/html-utils', 'js/views/video/transcripts/utils',
-        'js/views/abstract_editor', 'common/js/components/utils/view_utils', , 'js/models/uploads', 'js/views/uploads'
+        'js/views/abstract_editor', 'common/js/components/utils/view_utils', 'js/models/uploads', 'js/views/uploads'
     ],
 function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload, UploadDialog) {
     'use strict';
@@ -20,7 +20,7 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
         events: {
             'click .setting-clear': 'clear',
             'click .create-setting': 'addEntry',
-            'click .remove-setting': 'deleteTranscript',
+            'click .remove-setting': 'removeEntry',
             'click .upload-setting': 'upload',
             'change select': 'onChangeHandler'
         },
@@ -48,7 +48,6 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
                 languageMap[lang] = lang;
             });
             TranscriptUtils.Storage.set('languageMap', languageMap);
-
             AbstractEditor.prototype.initialize.apply(this, arguments);
         },
 
@@ -149,53 +148,43 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
 
         removeEntry: function(event) {
             event.preventDefault();
-            var $currentListItemEl = $(event.currentTarget).parent(),
+            var self = this,
+                $currentListItemEl = $(event.currentTarget).parent(),
                 originalLang = $currentListItemEl.data('original-lang'),
                 selectedLang = $currentListItemEl.find('select option:selected').val(),
-                languageMap = TranscriptUtils.Storage.get('languageMap');
-
-            // re-render dropdowns
-            this.setValueInEditor(this.getAllLanguageDropdownElementsData(false, selectedLang));
-
-            // remvove the `originalLang` from `languageMap`
+                languageMap = TranscriptUtils.Storage.get('languageMap'),
+                edxVideoIdField = TranscriptUtils.getField(self.model.collection, 'edx_video_id');
+            /*
+            There is a scenario when a user adds an empty video translation item and
+            removes it. In such cases, omitting will have no harm on the model
+            values or languages map.
+            */
             if (originalLang) {
-                TranscriptUtils.Storage.set('languageMap', _.omit(languageMap, originalLang));
+                ViewUtils.confirmThenRunOperation(
+                    gettext('Are you sure you want to remove this transcript?'),
+                    gettext('If you remove this transcript, the transcript will not be available for this component.'),
+                    gettext('Remove Transcript'),
+                    function() {
+                        ViewUtils.runOperationShowingMessage(
+                            gettext('Removing'),
+                            function() {
+                                return $.ajax({
+                                    url: self.model.get('urlRoot'),
+                                    type: 'DELETE',
+                                    data: JSON.stringify({lang: originalLang, edx_video_id: edxVideoIdField.getValue()})
+                                }).done(function() {
+                                    self.setValueInEditor(self.getAllLanguageDropdownElementsData(false, selectedLang));
+                                    TranscriptUtils.Storage.set('languageMap', _.omit(languageMap, originalLang));
+                                });
+                            }
+                        );
+                    }
+                );
+            } else {
+                this.setValueInEditor(this.getAllLanguageDropdownElementsData(false, selectedLang));
             }
 
             this.$el.find('.create-setting').removeClass('is-disabled').attr('aria-disabled', false);
-        },
-
-        deleteTranscript: function(event) {
-            var self = this,
-                lang = $(event.currentTarget).data('lang');
-
-            event.preventDefault();
-
-            // Remove the entry if transcript is not yet uploaded, no need to make ajax call
-            if(_.isEmpty(lang) || _.isEmpty(this.model.get('value')[lang])) {
-                self.removeEntry(event);
-                return;
-            }
-
-            ViewUtils.confirmThenRunOperation(
-                gettext('Are you sure you want to remove this transcript?'),
-                gettext('If you remove this transcript, the transcript will not be available for this component.'),
-                gettext('Remove Transcript'),
-                function() {
-                    ViewUtils.runOperationShowingMessage(
-                        gettext('Removing'),
-                        function() {
-                            return $.ajax({
-                                url: self.model.get('urlRoot') + '/' + lang,
-                                type: 'DELETE',
-                                data: JSON.stringify({lang: lang, edx_video_id: edx_video_id})
-                            }).done(function() {
-                                self.removeEntry(event);
-                            });
-                        }
-                    );
-                }
-            );
         },
 
         upload: function(event) {

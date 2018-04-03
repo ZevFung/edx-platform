@@ -25,7 +25,7 @@ from .transcripts_utils import (
     clean_video_id,
     get_or_create_sjson,
     generate_sjson_for_all_speeds,
-    get_video_transcript_content,
+    save_to_store,
     subs_filename,
     Transcript,
     TranscriptException,
@@ -491,9 +491,16 @@ class VideoStudioViewHandlers(object):
                         )
             elif request.method == 'DELETE':
                 response = Response(status=200)
+                request_data = request.json
+
+                if 'lang' not in request_data or 'edx_video_id' not in request_data:
+                    return Response(status=400)
+
+                language = request_data['lang']
+                edx_video_id = clean_video_id(request_data['edx_video_id'])
 
                 if edx_video_id:
-                    edxval_api.delete_video_transcript(video_id=edx_video_id, language_code=language)
+                    delete_video_transcript(video_id=edx_video_id, language_code=language)
 
                 if language == u'en':
                     # remove any transcript file from content store for the video ids
