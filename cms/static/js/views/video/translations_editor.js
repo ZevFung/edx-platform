@@ -30,21 +30,22 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
 
         initialize: function() {
             var templateName = _.result(this, 'templateItemName'),
-                tpl = document.getElementById(templateName).text;
+                tpl = document.getElementById(templateName).text,
+                languageMap = {};
 
             if (!tpl) {
                 console.error("Couldn't load template for item: " + templateName);
             }
 
             this.templateItem = _.template(tpl);
-            AbstractEditor.prototype.initialize.apply(this, arguments);
 
-
-            var languageMap = {};
+            // Initialize language map
             _.each(this.model.getDisplayValue(), function(value, lang) {
                 languageMap[lang] = lang;
             });
             TranscriptUtils.Storage.set('languageMap', languageMap);
+
+            AbstractEditor.prototype.initialize.apply(this, arguments);
         },
 
         getDropdown: (function() {
@@ -125,7 +126,7 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
                     newLang: newLang,
                     originalLang: _.findKey(languageMap, function(lang){ return lang === newLang}) || '',
                     value: value,
-                    url: self.model.get('urlRoot') + '/' + newLang
+                    url: self.model.get('urlRoot')
                 })).prepend(dropdown.clone().val(newLang))[0];
 
                 frag.appendChild(html);
@@ -171,7 +172,6 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
                 $listItem = $target.parents('li.list-settings-item'),
                 originalLang = $listItem.data('original-lang'),
                 newLang = $listItem.find(':selected').val(),
-                uploadURL = this.model.get('urlRoot'),
                 edxVideoIdField = TranscriptUtils.getField(self.model.collection, 'edx_video_id'),
                 fileUploadModel,
                 uploadData,
@@ -197,16 +197,25 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, FileUpload, UploadDia
 
             videoUploadDialog = new VideoUploadDialog({
                 model: fileUploadModel,
-                url: uploadURL,
+                url: this.model.get('urlRoot'),
                 parentElement: $target.closest('.xblock-editor'),
                 uploadData: uploadData,
                 onSuccess: function(response) {
-                    if (!response.filename) { return; }
+                    var transcripts = self.model.get('value'),
+                        languageMap = {};
 
-                    var dict = $.extend(true, {}, self.model.get('value'));
+                    //Update edx-video-id
+                    edxVideoIdField.setValue(response.edx_video_id);
 
-                    dict[lang] = response.filename;
-                    self.model.setValue(dict);
+                    // Update language map
+                    transcripts[response.language_code] = response.edx_video_id;
+                    _.each(transcripts, function(value, lang) {
+                        languageMap[lang] = lang;
+                    });
+                    TranscriptUtils.Storage.set('languageMap', languageMap);
+
+                    // Update model, this will re-render the whole view
+                    self.model.setValue(transcripts);
                 }
             });
             videoUploadDialog.show();

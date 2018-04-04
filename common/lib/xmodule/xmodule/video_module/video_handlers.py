@@ -20,8 +20,9 @@ from xmodule.exceptions import NotFoundError
 from xmodule.fields import RelativeTime
 from opaque_keys.edx.locator import CourseLocator
 
-from edxval.api import create_or_update_video_transcript
+from edxval.api import create_or_update_video_transcript, create_external_video
 from .transcripts_utils import (
+    clean_video_id,
     get_or_create_sjson,
     generate_sjson_for_all_speeds,
     get_video_transcript_content,
@@ -386,21 +387,20 @@ class VideoStudioViewHandlers(object):
             None or String
             If there is error returns error message otherwise None.
         """
-        _ = self.runtime.service(self, "i18n").ugettext
-
         error = None
+        _ = self.runtime.service(self, "i18n").ugettext
         # Validate the must have attributes - this error is unlikely to be faced by common users.
         must_have_attrs = ['edx_video_id', 'language_code', 'new_language_code']
         missing = [attr for attr in must_have_attrs if attr not in data]
 
+        # Get available transcript languages.
         transcripts = self.get_transcripts_info()
         available_translations = self.available_translations(transcripts, verify_assets=True)
 
         if missing:
             error = _(u'The following parameters are required: {missing}.').format(missing=', '.join(missing))
         elif (
-                data['language_code'] != data['new_language_code'] and
-                data['new_language_code'] in available_translations
+            data['language_code'] != data['new_language_code'] and data['new_language_code'] in available_translations
         ):
             error = _(u'A transcript with the "{language_code}" language code already exists.'.format(
                 language_code=data['new_language_code']
@@ -442,35 +442,20 @@ class VideoStudioViewHandlers(object):
 
         if dispatch.startswith('translation'):
 
-            from pdb import set_trace; set_trace()
-            language = dispatch.replace('translation', '').strip('/')
-
-            if not language:
-                log.info("Invalid /translation request: no language.")
-                return Response(status=400)
-
             if request.method == 'POST':
-                # subtitles = request.POST['file']
-                # try:
-                #     file_data = subtitles.file.read()
-                #     unicode(file_data, "utf-8", "strict")
-                # except UnicodeDecodeError:
-                #     log.info("Invalid encoding type for transcript file: {}".format(subtitles.filename))
-                #     msg = _("Invalid encoding type, transcripts should be UTF-8 encoded.")
-                #     return Response(msg, status=400)
-                # save_to_store(file_data, unicode(subtitles.filename), 'application/x-subrip', self.location)
-                # generate_sjson_for_all_speeds(self, unicode(subtitles.filename), {}, language)
-                # response = {'filename': unicode(subtitles.filename), 'status': 'Success'}
-                # return Response(json.dumps(response), status=201)
-
                 error = self.validate_transcript_upload_data(data=request.POST)
                 if error:
                     response = Response(json={'error': error}, status=400)
                 else:
-                    edx_video_id = request.POST['edx_video_id']
+                    edx_video_id = clean_video_id(request.POST['edx_video_id'])
                     language_code = request.POST['language_code']
                     new_language_code = request.POST['new_language_code']
-                    transcript_file = request.POST['file']
+                    transcript_file = request.POST['file'].file
+
+                    if not edx_video_id:
+                        # Back-populate the video ID for an external video.
+                        self.edx_video_id = create_external_video(display_name=u'external video')
+
                     try:
                         # Convert SRT transcript into an SJSON format
                         # and upload it to S3.
@@ -488,7 +473,11 @@ class VideoStudioViewHandlers(object):
                             },
                             file_data=ContentFile(sjson_subs),
                         )
-                        response = Response(status=201)
+                        payload = {
+                            'edx_video_id': edx_video_id,
+                            'language_code': new_language_code
+                        }
+                        response = Response(json.dumps(payload), status=201)
                     except (TranscriptsGenerationException, UnicodeDecodeError):
                         response = Response(
                             json={
@@ -499,21 +488,26 @@ class VideoStudioViewHandlers(object):
                             status=400
                         )
 
-                return response
-
             elif request.method == 'GET':
+                language = request.GET.get('language_code')
+                if not language:
+                    return Response(json={'error': _(u'Language is required.')}, status=400)
 
-                filename = request.GET.get('filename')
-                if not filename:
-                    log.info("Invalid /translation request: no filename in request.GET")
-                    return Response(status=400)
+                try:
+                    transcript_content, transcript_name, mime_type = get_transcript(
+                        video=self, lang=language, output_format=Transcript.SRT
+                    )
+                    response = Response(transcript_content, headerlist=[
+                        ('Content-Disposition', 'attachment; filename="{}"'.format(transcript_name.encode('utf8'))),
+                        ('Content-Language', language),
+                        ('Content-Type', mime_type)
+                    ])
+                except (UnicodeDecodeError, TranscriptsGenerationException, NotFoundError):
+                    response = Response(status=404)
 
-                content = Transcript.get_asset(self.location, filename).data
-                response = Response(content, headerlist=[
-                    ('Content-Disposition', 'attachment; filename="{}"'.format(filename.encode('utf8'))),
-                    ('Content-Language', language),
-                ])
-                response.content_type = Transcript.mime_types['srt']
+            else:
+                # Any other HTTP method is not allowed.
+                response = Response(status=404)
 
         else:  # unknown dispatch
             log.debug("Dispatch is not allowed")

@@ -5,7 +5,7 @@
     %><a href="#" class="upload-action upload-setting" data-value="<%= value %>"><%= value ? gettext("Replace") : gettext("Upload") %>
     </a><%
      } %><% if (value) {
-     %><a href="<%= url %>?filename=<%= value %>" class="download-action download-setting"><%= gettext("Download") %>
+     %><a href="<%= url %>?language_code=<%= originalLang %>" class="download-action download-setting"><%= gettext("Download") %>
     </a><%
      }
    %>
