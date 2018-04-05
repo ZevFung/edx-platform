@@ -34,6 +34,7 @@ from .transcripts_utils import (
     get_transcript,
     get_transcript_from_contentstore,
     remove_subs_from_store,
+    get_html5_ids
 )
 
 log = logging.getLogger(__name__)
