@@ -454,7 +454,7 @@ class VideoStudioViewHandlers(object):
 
                     if not edx_video_id:
                         # Back-populate the video ID for an external video.
-                        self.edx_video_id = create_external_video(display_name=u'external video')
+                        self.edx_video_id = edx_video_id = create_external_video(display_name=u'external video')
 
                     try:
                         # Convert SRT transcript into an SJSON format
