@@ -943,7 +943,7 @@ class TestStudioTranscriptTranslationPostDispatch(TestVideo):
         },
     )
     @ddt.unpack
-    def xtest_studio_transcript_post_validations(self, post_data, error_message):
+    def test_studio_transcript_post_validations(self, post_data, error_message):
         """
         Verify that POST request validations works as expected.
         """

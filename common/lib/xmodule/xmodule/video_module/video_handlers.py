@@ -454,6 +454,7 @@ class VideoStudioViewHandlers(object):
 
                     if not edx_video_id:
                         # Back-populate the video ID for an external video.
+                        # pylint: disable=attribute-defined-outside-init
                         self.edx_video_id = edx_video_id = create_external_video(display_name=u'external video')
 
                     try:
