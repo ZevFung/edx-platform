@@ -554,7 +554,9 @@ class VideoComponentPage(VideoPage):
             language_code (str): language code
 
         """
-        self.q(css='.remove-action').filter(lambda el: language_code == el.get_attribute('data-lang')).click()
+        selector = ".metadata-video-translations .list-settings-item"
+        translation = self.q(css=selector).filter(lambda el: language_code == el.get_attribute("data-original-lang"))
+        translation[0].find_element_by_class_name("remove-action").click()
 
     @property
     def upload_status_message(self):
