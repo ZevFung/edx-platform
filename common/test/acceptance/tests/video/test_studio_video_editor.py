@@ -300,28 +300,22 @@ class VideoEditorTest(CMSVideoBaseTest):
         self.save_unit_settings()
         self.assertFalse(self.video.is_captions_visible())
 
-    @ddt.data(
-        '',
-        'uk'
-    )
-    def test_translations_entry_remove_works(self, language_code):
+    def test_translations_entry_remove_works(self):
         """
         Scenario: Translations entry removal works correctly when transcript is not uploaded
         Given I have created a Video component
         And I edit the component
         And I open tab "Advanced"
         And I click on "+Add" button for "Transcript Languages" field
-        And I select the language
         Then I click on "Remove" button
         And I see newly created entry is removed
         """
         self._create_video_component()
         self.edit_component()
         self.open_advanced_tab()
-        self.video.click_button('translation_add')
-        self.video.select_translation_language(language_code)
+        self.video.click_button("translation_add")
         self.assertEqual(self.video.translations_count(), 1)
-        self.video.remove_translation(language_code)
+        self.video.remove_translation("")
         self.assertEqual(self.video.translations_count(), 0)
 
     def test_cannot_upload_sjson_translation(self):

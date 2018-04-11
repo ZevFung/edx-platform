@@ -18,7 +18,6 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
 
     var Translations = AbstractEditor.extend({
         events: {
-            'click .setting-clear': 'clear',
             'click .create-setting': 'addEntry',
             'click .remove-setting': 'removeEntry',
             'click .upload-setting': 'upload',
@@ -127,7 +126,7 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
             _.each(values, function(value, newLang) {
                 var html = $(self.templateItem({
                     newLang: newLang,
-                    originalLang: _.findKey(languageMap, function(lang){ return lang === newLang}) || '',
+                    originalLang: _.findKey(languageMap, function(lang) { return lang === newLang; }) || '',
                     value: value,
                     url: self.model.get('urlRoot')
                 })).prepend(dropdown.clone().val(newLang))[0];
@@ -147,13 +146,15 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
         },
 
         removeEntry: function(event) {
-            event.preventDefault();
             var self = this,
                 $currentListItemEl = $(event.currentTarget).parent(),
                 originalLang = $currentListItemEl.data('original-lang'),
                 selectedLang = $currentListItemEl.find('select option:selected').val(),
                 languageMap = TranscriptUtils.Storage.get('languageMap'),
                 edxVideoIdField = TranscriptUtils.getField(self.model.collection, 'edx_video_id');
+
+            event.preventDefault();
+
             /*
             There is a scenario when a user adds an empty video translation item and
             removes it. In such cases, omitting will have no harm on the model
@@ -188,8 +189,6 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
         },
 
         upload: function(event) {
-            event.preventDefault();
-
             var self = this,
                 $target = $(event.currentTarget),
                 $listItem = $target.parents('li.list-settings-item'),
@@ -200,10 +199,12 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
                 uploadData,
                 videoUploadDialog;
 
+            event.preventDefault();
+
             // That's the case when an author is
             // uploading a new transcript.
             if (!originalLang) {
-                originalLang = newLang
+                originalLang = newLang;
             }
 
             // Transcript data payload
@@ -230,7 +231,7 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
                     // new language entry to be added to languageMap
                     newLangObject[newLang] = newLang;
 
-                    //Update edx-video-id
+                    // Update edx-video-id
                     edxVideoIdField.setValue(response.edx_video_id);
 
                     // Update language map by omitting original lang and adding new lang
@@ -248,13 +249,6 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
 
         enableAdd: function() {
             this.$el.find('.create-setting').removeClass('is-disabled').attr('aria-disabled', false);
-        },
-
-        clear: function() {
-            AbstractEditor.prototype.clear.apply(this, arguments);
-            if (_.isNull(this.model.getValue())) {
-                this.$el.find('.create-setting').removeClass('is-disabled').attr('aria-disabled', false);
-            }
         },
 
         onChangeHandler: function(event) {
@@ -288,27 +282,26 @@ function($, _, HtmlUtils, TranscriptUtils, AbstractEditor, ViewUtils, FileUpload
             // data object will mirror the languageMap. `data` will contain lang to lang map as explained below
             // {originalLang: originalLang};            original lang not changed
             // {newLang: originalLang};                 original lang changed to a new lang
-            // {selectedLang: ""};                      new lang to be added, no entry in languageMap
-            _.each(languageDropdownElements, function(languageDropdown, index){
+            // {selectedLang: ''};                      new lang to be added, no entry in languageMap
+            _.each(languageDropdownElements, function(languageDropdown) {
                 var language = $(languageDropdown).find(':selected').val();
-                data[language] = _.findKey(languageMap, function(lang){ return lang === language}) || "";
+                data[language] = _.findKey(languageMap, function(lang) { return lang === language; }) || '';
             });
 
             // This is needed to render an empty item that
             // will be further used to upload a transcript.
             if (isNew) {
-                data[""] = "";
+                data[''] = '';
             }
 
             // This Omits a language from the dropdown's data. It is
             // needed when an item is going to be removed.
             if (typeof(omittedLanguage) !== 'undefined') {
-                data = _.omit(data, omittedLanguage)
+                data = _.omit(data, omittedLanguage);
             }
 
             return data;
         }
-
     });
 
     return Translations;
