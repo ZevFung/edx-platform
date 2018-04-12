@@ -491,7 +491,6 @@ class VideoStudioViewHandlers(object):
                             status=400
                         )
             elif request.method == 'DELETE':
-                response = Response(status=200)
                 request_data = request.json
 
                 if 'lang' not in request_data or 'edx_video_id' not in request_data:
@@ -505,7 +504,10 @@ class VideoStudioViewHandlers(object):
 
                 if language == u'en':
                     # remove any transcript file from content store for the video ids
-                    possible_sub_ids = [self.sub, self.youtube_id_1_0] + get_html5_ids(self.html5_sources)
+                    possible_sub_ids = [
+                        self.sub,  # pylint: disable=access-member-before-definition
+                        self.youtube_id_1_0
+                    ] + get_html5_ids(self.html5_sources)
                     for sub_id in possible_sub_ids:
                         remove_subs_from_store(sub_id, self, language)
 
@@ -513,11 +515,11 @@ class VideoStudioViewHandlers(object):
                     remove_subs_from_store(self.transcripts.pop(language, None), self, language)
 
                     # also empty `sub` field
-                    self.sub = ''
+                    self.sub = ''  # pylint: disable=attribute-defined-outside-init
                 else:
                     remove_subs_from_store(self.transcripts.pop(language, None), self, language)
 
-                return response
+                return Response(status=200)
 
             elif request.method == 'GET':
                 language = request.GET.get('language_code')
