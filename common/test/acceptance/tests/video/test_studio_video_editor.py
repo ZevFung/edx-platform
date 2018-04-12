@@ -306,7 +306,7 @@ class VideoEditorTest(CMSVideoBaseTest):
         Given I have created a Video component
         And I edit the component
         And I open tab "Advanced"
-        And I click on "+Add" button for "Transcript Languages" field
+        And I click on "+ Add" button for "Transcript Languages" field
         Then I click on "Remove" button
         And I see newly created entry is removed
         """

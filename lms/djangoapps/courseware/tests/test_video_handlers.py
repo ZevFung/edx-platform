@@ -23,8 +23,6 @@ from xmodule.exceptions import NotFoundError
 from xmodule.modulestore import ModuleStoreEnum
 from xmodule.modulestore.django import modulestore
 from xmodule.video_module.transcripts_utils import (
-    TranscriptException,
-    TranscriptsGenerationException,
     Transcript,
     edxval_api,
     subs_filename,
@@ -1016,9 +1014,10 @@ class TestStudioTranscriptTranslationPostDispatch(TestVideo):
 
 
 @attr(shard=1)
+@ddt.ddt
 class TestStudioTranscriptTranslationDeleteDispatch(TestVideo):
     """
-    Test Studio video handler that provide translation transcripts.
+    Test studio video handler that provide translation transcripts.
 
     Tests for `translation` dispatch DELETE HTTP method.
     """
@@ -1026,11 +1025,23 @@ class TestStudioTranscriptTranslationDeleteDispatch(TestVideo):
     REQUEST_META = {'wsgi.url_scheme': 'http', 'REQUEST_METHOD': 'DELETE'}
     SRT_FILE = _create_srt_file()
 
-    def test_translation_missing_required_params(self):
+    @ddt.data(
+        {
+            'params': {'lang': 'uk'}
+        },
+        {
+            'params': {'edx_video_id': '12345'}
+        },
+        {
+            'params': {}
+        },
+    )
+    @ddt.unpack
+    def test_translation_missing_required_params(self, params):
         """
         Verify that DELETE dispatch works as expected when required args are missing from request
         """
-        request = Request(self.REQUEST_META, body=json.dumps({}))
+        request = Request(self.REQUEST_META, body=json.dumps(params))
         response = self.item_descriptor.studio_transcript(request=request, dispatch='translation')
         self.assertEqual(response.status_code, 400)
 
