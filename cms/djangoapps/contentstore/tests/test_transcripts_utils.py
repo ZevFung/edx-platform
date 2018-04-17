@@ -743,6 +743,9 @@ class TestGetTranscript(SharedModuleStoreTestCase):
             parent_location=self.vertical.location,
             edx_video_id=u'1234-5678-90'
         )
+        self.video.html5_sources = [
+            'www.abc.com/foo.mp4', 'www.abc.com/bar.webm', 'foo/bar/baz.m3u8'
+        ]
 
     def create_transcript(self, subs_id, language=u'en', filename='video.srt'):
         """
