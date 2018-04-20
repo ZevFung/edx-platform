@@ -859,7 +859,7 @@ def get_transcript_from_val(edx_video_id, lang=None, output_format=Transcript.SR
     """
     Get video transcript from edx-val.
     Arguments:
-        edx_video_id (unicode): course identifier
+        edx_video_id (unicode): video identifier
         lang (unicode): transcript language
         output_format (unicode): transcript output format
     Returns:
@@ -941,7 +941,7 @@ def get_transcript_from_contentstore(video, language, output_format, transcripts
                 file_name=transcripts[language],
                 language=language
             )
-            break;
+            break
         except (KeyError, NotFoundError):
             continue
 
