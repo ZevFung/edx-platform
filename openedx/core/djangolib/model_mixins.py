@@ -32,5 +32,12 @@ class DeletableByUserValue(object):
         Returns False otherwise.
         """
         filter_kwargs = {field: value}
+        print '-' * 20 + 'DEBUG' + '-' * 20
+        print 'filter_kwargs: {}'.format(filter_kwargs)
+        print 'cls: {}'.format(cls)
+        print 'cls.objects: {}'.format(cls.objects)
+        print 'cls.objects.filter(**filter_kwargs): {}'.format(cls.objects.filter(**filter_kwargs))
+        print 'cls.objects.filter(**filter_kwards).delete(): {}'.format(cls.objects.filter(**filter_kwargs).delete())
+        print '-' * 20 + 'DEBUG' + '-' * 20
         num_deleted_records, _ = cls.objects.filter(**filter_kwargs).delete()
         return num_deleted_records > 0
