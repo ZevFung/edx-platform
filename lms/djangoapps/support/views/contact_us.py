@@ -3,8 +3,12 @@ Signle support contact view
 """
 from django.conf import settings
 from django.views.generic import View
+from courseware.courses import get_course_by_id
+from courseware.model_data import FieldDataCache
 from edxmako.shortcuts import render_to_response
 from student.models import CourseEnrollment
+from xblock.fields import Scope
+from xblock.runtime import KeyValueStore
 
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 from openedx.features.enterprise_support import api as enterprise_api
@@ -38,6 +42,28 @@ class ContactUsView(View):
                 tags.append('enterprise_learner')
 
         context['tags'] = tags
-        context['course_id'] = request.session.get('course_id', '')
+        last_accessed_course = self.get_last_accessed_course(request, context['user_enrollments'])
+        context['course_id'] = last_accessed_course.get('course_id')
 
         return render_to_response("support/contact_us.html", context)
+
+    def get_last_accessed_course(self, request, enrollments):
+        """Get learner's last accessed course."""
+        dates = []
+        for enrollment in enrollments:
+            course = get_course_by_id(enrollment.course_overview.id)
+            field_data_cache = FieldDataCache.cache_for_descriptor_descendents(
+                course.id, request.user, course, depth=2)
+            key = KeyValueStore.Key(
+                scope=Scope.user_state,
+                user_id=request.user.id,
+                block_scope_id=course.location,
+                field_name='position'
+            )
+            last_modified = field_data_cache.last_modified(key)
+            if last_modified:
+                dates.append(
+                    {'course_id': unicode(course.id), 'last_modified': last_modified}
+                )
+
+        return max(dates, key=lambda x: x['last_modified'])

@@ -24,7 +24,7 @@ function LoggedInUser({ userInformation, setErrorState, zendeskApiHost, submitFo
     </div>);
   } else {
     courseElement = (<div>
-      <label htmlFor="course">{gettext('Course Name')}<span> {gettext('(Optional)')}</span></label>
+      <label htmlFor="course">{gettext('Course Name')}</label>
       <input type="text" className="form-control" id="course" />
     </div>);
   }
