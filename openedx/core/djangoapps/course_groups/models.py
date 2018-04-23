@@ -249,3 +249,18 @@ class UnregisteredLearnerCohortAssignments(DeletableByUserValue, models.Model):
     course_user_group = models.ForeignKey(CourseUserGroup)
     email = models.CharField(blank=True, max_length=255, db_index=True)
     course_id = CourseKeyField(max_length=255)
+
+    @classmethod
+    def delete_by_user_value(cls, value, field):
+        """
+        Deletes instances of this model where ``field`` equals ``value``.
+
+        e.g.
+            ``delete_by_user_value(value='learner@example.com', field='email')``
+
+        Returns True if any instances were deleted.
+        Returns False otherwise.
+        """
+        filter_kwargs = {field: value}
+        num_deleted_records, _ = cls.objects.filter(**filter_kwargs).delete()
+        return num_deleted_records > 0
