@@ -15,6 +15,7 @@ the marketing site and blog).
 import logging
 import urlparse
 
+from celery.tests.functional.case import HOSTNAME
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.contrib.staticfiles.storage import staticfiles_storage
@@ -23,6 +24,7 @@ from django.utils.translation import ugettext as _
 
 from branding.models import BrandingApiConfig
 from edxmako.shortcuts import marketing_link
+
 from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
 
 log = logging.getLogger("edx.footer")
@@ -172,12 +174,6 @@ def _footer_social_links():
 
 def _footer_connect_links():
     """Return the connect links to display in the footer. """
-    domain_name = Site.objects.get_current().domain
-
-    if domain_name == "edx.org":
-        contact_us_link = "https://courses.edx.org/support/contact_us"
-    else:
-        contact_us_link = "https://courses.stage.edx.org/support/contact_us"
 
     return [
         {
@@ -187,13 +183,17 @@ def _footer_connect_links():
         }
         for link_name, link_url, link_title in [
             ("blog", marketing_link("BLOG"), _("Blog")),
-            ("contact", contact_us_link, _("Contact Us")),
+            ("contact", build_support_form_url(), _("Contact Us")),
             ("help-center", settings.SUPPORT_SITE_LINK, _("Help Center")),
             ("media_kit", marketing_link("MEDIA_KIT"), _("Media Kit")),
             ("donate", marketing_link("DONATE"), _("Donate")),
         ]
         if link_url and link_url != "#"
     ]
+
+
+def build_support_form_url():
+    return '{base_url}/support/contact_us'.format(base_url=settings.LMS_ROOT_URL)
 
 
 def _footer_navigation_links():

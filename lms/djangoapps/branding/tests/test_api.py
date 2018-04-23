@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import mock
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test.utils import override_settings
@@ -105,7 +106,7 @@ class TestFooter(TestCase):
             ],
             'connect_links': [
                 {'url': 'https://edx.org/edx-blog', 'name': 'blog', 'title': 'Blog'},
-                {'url': '/support/contact_us', 'name': 'contact', 'title': 'Contact Us'},
+                {'url': '{base_url}/support/contact_us'.format(base_url=settings.LMS_ROOT_URL), 'name': 'contact', 'title': 'Contact Us'},
                 {'url': 'https://support.example.com', 'name': 'help-center', 'title': 'Help Center'},
                 {'url': 'https://edx.org/media-kit', 'name': 'media_kit', 'title': 'Media Kit'},
                 {'url': 'https://edx.org/donate', 'name': 'donate', 'title': 'Donate'}
