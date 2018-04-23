@@ -10,7 +10,6 @@ class StudentAccountDeletionConfirmationModal extends React.Component {
   constructor(props) {
     super(props);
 
-    this.closeConfirmationModal = this.closeConfirmationModal.bind(this);
     this.deleteAccount = this.deleteAccount.bind(this);
     this.handleChange = this.handleChange.bind(this);
     this.passwordFieldValidation = this.passwordFieldValidation.bind(this);
@@ -23,12 +22,6 @@ class StudentAccountDeletionConfirmationModal extends React.Component {
       responseError: false,
       responseErrorBody: {},
     };
-  }
-
-  closeConfirmationModal() {
-    const { onClose } = this.props;
-
-    onClose();
   }
 
   deleteAccount() {
@@ -104,78 +97,75 @@ class StudentAccountDeletionConfirmationModal extends React.Component {
     );
 
     return (
-      <Modal
-        title={gettext('Are you sure?')}
-        renderHeaderCloseButton={false}
-        onClose={onClose}
-        aria-live="polite"
-        open
-        body={(
-          <div>
-            {responseError &&
+      <div className="delete-confirmation-wrapper">
+        <Modal
+          title={gettext('Are you sure?')}
+          renderHeaderCloseButton={false}
+          onClose={onClose}
+          aria-live="polite"
+          open
+          body={(
+            <div>
+              {responseError &&
+                <StatusAlert
+                  dialog={(
+                    <div className="modal-alert">
+                      <div className="icon-wrapper">
+                        <Icon className={['fa', 'fa-exclamation-circle']} />
+                      </div>
+                      <div className="alert-content">
+                        <h3 className="alert-title">{ validationMessage }</h3>
+                        <p>{ validationErrorDetails }</p>
+                      </div>
+                    </div>
+                  )}
+                  alertType="danger"
+                  dismissible={false}
+                  open
+                />
+              }
+
               <StatusAlert
                 dialog={(
                   <div className="modal-alert">
                     <div className="icon-wrapper">
-                      <Icon className={['fa', 'fa-exclamation-circle']} />
+                      <Icon className={['fa', 'fa-exclamation-triangle']} />
                     </div>
                     <div className="alert-content">
-                      <h3 className="alert-title">{ validationMessage }</h3>
-                      <p>{ validationErrorDetails }</p>
+                      <h3 className="alert-title">{ gettext('You have selected “Delete my account.” Deletion of your account and personal data is permanent and cannot be undone. EdX will not be able to recover your account or the data that is deleted.') }</h3>
+                      <p>{ gettext('If you proceed, you will be unable to use this account to take courses on the edX app, edx.org, or any other site hosted by edX. This includes access to edx.org from your employer’s or university’s system and access to private sites offered by MIT Open Learning, Wharton Online, and Harvard Medical School.') }</p>
+                      <p dangerouslySetInnerHTML={{ __html: loseAccessText }} />
                     </div>
                   </div>
                 )}
-                alertType="danger"
                 dismissible={false}
                 open
               />
-            }
-
-            <StatusAlert
-              dialog={(
-                <div className="modal-alert">
-                  <div className="icon-wrapper">
-                    <Icon className={['fa', 'fa-exclamation-triangle']} />
-                  </div>
-                  <div className="alert-content">
-                    <h3 className="alert-title">{ gettext('You have selected “Delete my account.” Deletion of your account and personal data is permanent and cannot be undone. EdX will not be able to recover your account or the data that is deleted.') }</h3>
-                    <p>{ gettext('If you proceed, you will be unable to use this account to take courses on the edX app, edx.org, or any other site hosted by edX. This includes access to edx.org from your employer’s or university’s system and access to private sites offered by MIT Open Learning, Wharton Online, and Harvard Medical School.') }</p>
-                    <p dangerouslySetInnerHTML={{ __html: loseAccessText }} />
-                  </div>
-                </div>
-              )}
-              dismissible={false}
-              open
-            />
-            <p className="next-steps">{ gettext('If you still wish to continue and delete your account, please enter your account password:') }</p>
-            <InputText
-              name="confirm-password"
-              label="Password"
-              type="password"
-              className={['confirm-password-input']}
-              onBlur={this.passwordFieldValidation}
-              isValid={isValid}
-              validationMessage={validationMessage}
-              onChange={this.handleChange}
-              autoComplete="new-password"
-              themes={['danger']}
-            />
-          </div>
-        )}
-        closeText={gettext('Cancel')}
-        buttons={[
-          <Button
-            label={gettext('Cancel')}
-            onClick={this.closeConfirmationModal}
-            className={['cancel-btn']}
-          />,
-          <Button
-            label={gettext('Yes, Delete')}
-            onClick={this.deleteAccount}
-            disabled={password.length === 0 || passwordSubmitted}
-          />,
-        ]}
-      />
+              <p className="next-steps">{ gettext('If you still wish to continue and delete your account, please enter your account password:') }</p>
+              <InputText
+                name="confirm-password"
+                label="Password"
+                type="password"
+                className={['confirm-password-input']}
+                onBlur={this.passwordFieldValidation}
+                isValid={isValid}
+                validationMessage={validationMessage}
+                onChange={this.handleChange}
+                autoComplete="new-password"
+                themes={['danger']}
+              />
+            </div>
+          )}
+          closeText={gettext('Cancel')}
+          buttons={[
+            <Button
+              label={gettext('Yes, Delete')}
+              onClick={this.deleteAccount}
+              disabled={password.length === 0 || passwordSubmitted}
+            />,
+          ]}
+        />
+      </div>
     );
   }
 
@@ -183,14 +173,16 @@ class StudentAccountDeletionConfirmationModal extends React.Component {
     const { onClose } = this.props;
 
     return (
-      <Modal
-        title={gettext('We\'re sorry to see you go! Your account will be deleted shortly.')}
-        renderHeaderCloseButton={false}
-        body={gettext('Account deletion, including removal from email lists, may take a few weeks to fully process through our system. If you want to opt-out of emails before then, please unsubscribe from the footer of any email.')}
-        onClose={onClose}
-        aria-live="polite"
-        open
-      />
+      <div className="delete-success-wrapper">
+        <Modal
+          title={gettext('We\'re sorry to see you go! Your account will be deleted shortly.')}
+          renderHeaderCloseButton={false}
+          body={gettext('Account deletion, including removal from email lists, may take a few weeks to fully process through our system. If you want to opt-out of emails before then, please unsubscribe from the footer of any email.')}
+          onClose={onClose}
+          aria-live="polite"
+          open
+        />
+      </div>
     );
   }
 

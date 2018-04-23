@@ -579,20 +579,6 @@
         .paragon__btn:not(.cancel-btn) {
           @extend %btn-primary-blue;
         }
-
-        .cancel-btn {
-          @extend %ui-clear-button;
-
-          // set styles
-          @extend %btn-pl-default-base;
-
-          @include font-size(18);
-
-          border-color: transparent;
-          color: $blue;
-          padding: 11px 14px;
-          line-height: normal;
-        }
       }
 
       .modal-alert {
@@ -610,6 +596,25 @@
               size: 1rem;
               weight: $font-semibold;
             }
+          }
+        }
+      }
+
+      .delete-confirmation-wrapper {
+        .paragon__modal-footer {
+          .paragon__btn-outline-primary {
+            @extend %ui-clear-button;
+
+            // set styles
+            @extend %btn-pl-default-base;
+
+            @include font-size(18);
+            @include margin-left(25px);
+
+            border-color: $blue;
+            color: $blue;
+            padding: 11px 14px;
+            line-height: normal;
           }
         }
       }
